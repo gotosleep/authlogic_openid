@@ -107,10 +107,8 @@ module AuthlogicOpenid
           return false
         end
 
-      # Find an existing record. By default, maps users based on openid_identifier. Override this method to match
-      # users based on different criteria, for example email address
       def self.find_existing_openid_registration(openid_identifier, sreg_response, ax_response)
-          find_by_openid_identifier_method(openid_identifier)
+          find_by_openid_identifier(openid_identifier)
       end
 
         # Override this method to map the OpenID registration fields with fields in your model. See the required_fields and
