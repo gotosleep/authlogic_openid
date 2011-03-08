@@ -66,7 +66,7 @@ module AuthlogicOpenid
         @openid_error = e.message
       end
       
-      # Cleaers out the block if we are authenticating with OpenID, so that we can redirect without a DoubleRender
+      # Clears out the block if we are authenticating with OpenID, so that we can redirect without a DoubleRender
       # error.
       def save(&block)
         block = nil if !openid_identifier.blank? && controller.request.env[Rack::OpenID::RESPONSE].blank?
@@ -101,7 +101,7 @@ module AuthlogicOpenid
               return
             end
             
-            self.attempted_record = klass.send(find_by_openid_identifier_method, openid_identifier)
+            self.attempted_record = klass.send(find_existing_openid_registration, openid_identifier, sreg_response, ax_response)
             
             if !attempted_record
               if auto_register?

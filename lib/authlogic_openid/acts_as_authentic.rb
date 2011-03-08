@@ -12,7 +12,7 @@ module AuthlogicOpenid
         add_acts_as_authentic_module(Methods, :prepend)
       end
     end
-    
+
     module Config
       # Some OpenID providers support a lightweight profile exchange protocol, for those that do, you can require
       # certain fields. This is convenient for new registrations, as it will basically fill out the fields in the
@@ -26,7 +26,7 @@ module AuthlogicOpenid
         rw_config(:openid_required_fields, value, [])
       end
       alias_method :openid_required_fields=, :openid_required_fields
-      
+
       # Same as required_fields, but optional instead.
       #
       # * <tt>Default:</tt> []
@@ -36,12 +36,12 @@ module AuthlogicOpenid
       end
       alias_method :openid_optional_fields=, :openid_optional_fields
     end
-    
+
     module Methods
       # Set up some simple validations
       def self.included(klass)
         return if !klass.column_names.include?("openid_identifier")
-        
+
         klass.class_eval do
           validates_uniqueness_of :openid_identifier, :scope => validations_scope, :if => :using_openid?
           validate :validate_openid
@@ -50,7 +50,7 @@ module AuthlogicOpenid
           validates_length_of_password_confirmation_field_options validates_length_of_password_confirmation_field_options.merge(:if => :validate_password_with_openid?)
         end
       end
-      
+
       # Set the openid_identifier field and also resets the persistence_token if this value changes.
       def openid_identifier=(value)
         write_attribute(:openid_identifier, value.blank? ? nil : OpenID.normalize_url(value))
@@ -58,7 +58,7 @@ module AuthlogicOpenid
       rescue OpenID::DiscoveryFailure => e
         @openid_error = e.message
       end
-      
+
       # This is where all of the magic happens. This is where we hook in and add all of the OpenID sweetness.
       #
       # I had to take this approach because when authenticating with OpenID nonces and what not are stored in database
@@ -75,11 +75,11 @@ module AuthlogicOpenid
         yield(result) if block_given?
         result
       end
-      
+
       private
         def authenticate_with_openid
           @openid_error = nil
-          
+
           if !openid_complete?
             session_class.controller.session[:openid_attributes] = attributes_to_save
           else
@@ -92,7 +92,7 @@ module AuthlogicOpenid
            :optional => self.class.openid_optional_fields,
            :return_to => session_class.controller.url_for(:for_model => "1"),
            :method => :post }
-          
+
           session_class.controller.send(:authenticate_with_open_id, openid_identifier, options) do |result, openid_identifier, sreg_response, ax_response|
             if result.unsuccessful?
               @openid_error = result.message
@@ -100,13 +100,19 @@ module AuthlogicOpenid
               self.openid_identifier = openid_identifier
               map_openid_registration(sreg_response, ax_response)
             end
-            
+
             return true
           end
-          
+
           return false
         end
-        
+
+      # Find an existing record. By default, maps users based on openid_identifier. Override this method to match
+      # users based on different criteria, for example email address
+      def self.find_existing_openid_registration(openid_identifier, sreg_response, ax_response)
+          find_by_openid_identifier_method(openid_identifier)
+      end
+
         # Override this method to map the OpenID registration fields with fields in your model. See the required_fields and
         # optional_fields configuration options to enable this feature.
         #
@@ -117,7 +123,7 @@ module AuthlogicOpenid
           self.first_name ||= sreg_response[:fullname].split(" ").first if respond_to?(:first_name) && !sreg_response[:fullname].blank?
           self.last_name ||= sreg_response[:fullname].split(" ").last if respond_to?(:last_name) && !sreg_response[:last_name].blank?
         end
-        
+
         # This method works in conjunction with map_saved_attributes.
         #
         # Let's say a user fills out a registration form, provides an OpenID and submits the form. They are then redirected to their
@@ -127,13 +133,13 @@ module AuthlogicOpenid
         # more just override this method and do whatever you want.
         def attributes_to_save # :doc:
           attrs_to_save = attributes.clone.delete_if do |k, v|
-            [:id, :password, crypted_password_field, password_salt_field, :persistence_token, :perishable_token, :single_access_token, :login_count, 
+            [:id, :password, crypted_password_field, password_salt_field, :persistence_token, :perishable_token, :single_access_token, :login_count,
               :failed_login_count, :last_request_at, :current_login_at, :last_login_at, :current_login_ip, :last_login_ip, :created_at,
               :updated_at, :lock_version].include?(k.to_sym)
           end
           attrs_to_save.merge!(:password => password, :password_confirmation => password_confirmation)
         end
-        
+
         # This method works in conjunction with attributes_to_save. See that method for a description of the why these methods exist.
         #
         # If the default behavior of this method is not sufficient for you because you have attr_protected or attr_accessible then
@@ -145,23 +151,23 @@ module AuthlogicOpenid
         def map_saved_attributes(attrs) # :doc:
           self.attributes = attrs
         end
-        
+
         def validate_openid
           errors.add(:openid_identifier, "had the following error: #{@openid_error}") if @openid_error
         end
-        
+
         def using_openid?
           respond_to?(:openid_identifier) && !openid_identifier.blank?
         end
-        
+
         def openid_complete?
           session_class.controller.using_open_id? && session_class.controller.params[:for_model]
         end
-        
+
         def authenticate_with_openid?
           session_class.activated? && ((using_openid? && openid_identifier_changed?) || openid_complete?)
         end
-        
+
         def validate_password_with_openid?
           !using_openid? && require_password?
         end
