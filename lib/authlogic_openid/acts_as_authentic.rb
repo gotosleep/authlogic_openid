@@ -76,6 +76,10 @@ module AuthlogicOpenid
         result
       end
 
+      def self.find_existing_openid_registration(openid_identifier, sreg_response, ax_response)
+          find_by_openid_identifier(openid_identifier)
+      end
+
       private
         def authenticate_with_openid
           @openid_error = nil
@@ -106,10 +110,6 @@ module AuthlogicOpenid
 
           return false
         end
-
-      def self.find_existing_openid_registration(openid_identifier, sreg_response, ax_response)
-          find_by_openid_identifier(openid_identifier)
-      end
 
         # Override this method to map the OpenID registration fields with fields in your model. See the required_fields and
         # optional_fields configuration options to enable this feature.
