@@ -115,6 +115,11 @@ module AuthlogicOpenid
             else
               errors.add(:openid_identifier, "did not match any users in our database, have you set up your account to use OpenID?")
             end
+          elsif attempted_record.openid_identifier != openid_identifier
+            #update openid_identifier for an existing record
+            attempted_record.openid_identifier = openid_identifier
+            # should we call map_openid_registration again? I don't think so..
+            attempted_record.save_without_session_maintenance
           end
         end
       end
